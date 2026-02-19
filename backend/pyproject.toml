@@ -1,0 +1,6 @@
+[project]
+name = "Echo Ledger"
+version = "0.1.0"
+description = "Backend for Echo Ledger"
+requires-python = ">=3.12"
+dependencies = []
