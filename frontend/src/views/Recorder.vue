@@ -2,16 +2,69 @@
 import { ref } from 'vue';
 
 const isRecording = ref(false);
+let stream, audioCtx, source, audioWorkletNode, socket;
 
-const toggleRecording = () => {
-    isRecording.value = !isRecording.value;
+const toggleRecording = async () => {
+    // one time permissions
+    if (!stream) {
+        if (!window.isSecureContext) {
+            alert("Browser is blocking mic access because this connection is not HTTPS or localhost.");
+            return;
+        }
 
-    if (isRecording.value) {
-        console.log("Starting mic stream...");
-        // Logic for Web Audio API / WebSocket stream will go here
-    } else {
-        console.log("Stopping mic stream...");
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: { ideal: 1 },
+                    sampleSize: { ideal: 16 },
+                    echoCancellation: { ideal: true },
+                    noiseSuppression: { ideal: true },
+                    autoGainControl: { ideal: false },
+                },
+            });
+
+            // init audio context
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            await audioCtx.audioWorklet.addModule('/processor.js');
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            // init web socket
+            socket = new WebSocket(import.meta.env.VITE_BACKEND_URL);
+            socket.binaryType = "arraybuffer";
+        } catch (error) {
+            console.error("Permission denied or microphone not found:", error);
+            return;
+        }
     }
+
+    // toggle recording
+    if (!isRecording.value) {
+        audioWorkletNode = new AudioWorkletNode(audioCtx, 'audio-sender');
+
+        source = audioCtx.createMediaStreamSource(stream);
+        source.connect(audioWorkletNode);
+
+        audioWorkletNode.port.onmessage = (event) => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(event.data);
+            }
+        };
+
+        console.log("Started recording");
+    } else {
+        if (source) source.disconnect();
+        if (audioWorkletNode) {
+            audioWorkletNode.disconnect();
+            audioWorkletNode.port.onmessage = null;
+        }
+
+        console.log("Stopped recording");
+    }
+
+    isRecording.value = !isRecording.value;
 };
 </script>
 
