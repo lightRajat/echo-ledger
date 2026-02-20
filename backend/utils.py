@@ -1,5 +1,6 @@
 import asyncio
 import constants as c
+import numpy as np
 
 class Timer:
     def __init__(self, timeout, callback, *args, **kwargs):
@@ -34,3 +35,18 @@ async def stitch_audio_bytes(audio_queue, audio_queue_buffer: list):
         full_audio = b''.join(audio_queue_buffer)
         audio_queue.put(full_audio)
         audio_queue_buffer.clear()
+
+def transcribe_audio(model, audio_queue):
+    while True:
+        try:
+            audio_bytes = audio_queue.get()
+            audio_np = np.frombuffer(audio_bytes, dtype=np.float32)
+            print(audio_np)
+            segments, info = model.transcribe(audio_np, beam_size=5, language="en")
+            for segment in segments:
+                print(segment.text, end=' ')
+            print()
+        except Exception as e:
+            print(f"Transcription Error: {e}")
+        finally:
+            audio_queue.task_done()
