@@ -1,9 +1,14 @@
-from app.routes import router
 from app.silero import Silero
+from app.llama import Llama
+from app.routes import router
+from app.utils import log
 from app.whisper import Whisper
 import asyncio # REMOVE LATER
+from dotenv import load_dotenv
+load_dotenv()
 from fastapi import FastAPI
 from fastapi import WebSocket, WebSocketDisconnect # REMOVE LATER
+import os
 from utils import push_alternating_messages # REMOVE LATER
 import uvicorn
 import warnings
@@ -14,8 +19,10 @@ app = FastAPI()
 silero = Silero()
 app.state.silero = silero
 whisper = Whisper(silero.audio_queue)
+llama = Llama(whisper.text_queue, os.getenv("LLAMA_REPO_ID"), os.getenv("LLAMA_FILE_NAME"))
 
 app.include_router(router)
+log("Websockets active")
 
 # REMOVE LATER
 print("Dashboard Websocket server listening")
