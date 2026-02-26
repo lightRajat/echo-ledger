@@ -1,7 +1,18 @@
 import os
 import sqlite3
+from huggingface_hub import hf_hub_download
+from dotenv import load_dotenv
+from silero_vad import load_silero_vad
+from faster_whisper import download_model
+
+def log(message):
+    print(f"[INFO]: {message}")
 
 def init_db(db_name="data.db"):
+    if os.path.exists(db_name):
+        log(f"Database '{db_name}' already exists. Skipping initialization.")
+        return
+    
     # Connect to the database (creates it if it doesn't exist)
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
@@ -47,10 +58,27 @@ def init_db(db_name="data.db"):
 
     conn.commit()
     conn.close()
-    print(f"Database '{db_name}' initialized successfully.")
+    log(f"Database '{db_name}' initialized successfully.")
+
+def download_llama_model(repo_id: str, filename: str):
+    model_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=filename,
+    )
+    log(f"Llama model downloaded/setup successfully")
+
+def download_silero_model():
+    load_silero_vad()
+    log("Silero VAD model downloaded/setup successfully")
+
+def downlad_whisper_model(model_size="medium"):
+    download_model(model_size)
+    log(f"Whisper model '{model_size}' downloaded/setup successfully")
 
 if __name__ == "__main__":
-    if os.path.exists("data.db"):
-        print("Database already exists.")
-    else:
-        init_db()
+    load_dotenv()
+
+    init_db()
+    download_silero_model()
+    downlad_whisper_model()
+    download_llama_model(os.getenv("LLAMA_REPO_ID"), os.getenv("LLAMA_FILE_NAME"))
