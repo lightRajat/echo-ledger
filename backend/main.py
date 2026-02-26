@@ -1,9 +1,10 @@
+import asyncio
 import constants as c
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from faster_whisper import WhisperModel
 import queue
 from silero_vad import load_silero_vad
-from utils import Timer, stitch_audio_bytes, transcribe_audio
+from utils import Timer, stitch_audio_bytes, transcribe_audio, push_alternating_messages
 import threading
 import torch
 import uvicorn
@@ -29,10 +30,11 @@ except Exception as e:
 transcription_thread = threading.Thread(target=transcribe_audio, args=(whisper_model, audio_queue), daemon=True)
 transcription_thread.start()
 
-print("Websocket server listening")
+print("Audio Websocket server listening")
 @app.websocket("/")
-async def home(websocket: WebSocket):
+async def audio_stream(websocket: WebSocket):
     await websocket.accept()
+    print("Connected to audio stream websocket")
     
     try:
         while True:
@@ -49,6 +51,25 @@ async def home(websocket: WebSocket):
         pass
     except Exception as e:
         print(f"Error: {e}")
+
+print("Dashboard Websocket server listening")
+@app.websocket("/dashboard")
+async def dashboard(websocket: WebSocket):
+    await websocket.accept()
+    print("Connected to dashboard websocket")
+
+    pusher_task = asyncio.create_task(push_alternating_messages(websocket))
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print(f"Client sent: {data}")
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        pusher_task.cancel()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

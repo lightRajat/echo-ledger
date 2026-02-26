@@ -41,7 +41,6 @@ def transcribe_audio(model, audio_queue):
         try:
             audio_bytes = audio_queue.get()
             audio_np = np.frombuffer(audio_bytes, dtype=np.float32)
-            print(audio_np)
             segments, info = model.transcribe(audio_np, beam_size=5, language="en")
             for segment in segments:
                 print(segment.text, end=' ')
@@ -50,3 +49,15 @@ def transcribe_audio(model, audio_queue):
             print(f"Transcription Error: {e}")
         finally:
             audio_queue.task_done()
+
+async def push_alternating_messages(websocket):
+    messages = ["start ts", "end ts"]
+    index = 0
+    
+    try:
+        while True:
+            await websocket.send_text(messages[index])
+            index = 1 - index 
+            await asyncio.sleep(5)
+    except Exception as e:
+        print(f"Background task stopped: {e}")
