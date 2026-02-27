@@ -1,3 +1,4 @@
+from app.dashboard import Dashboard
 from rapidfuzz import fuzz
 import sqlite3
 
@@ -31,6 +32,7 @@ class Database:
 
         p = self.products[product_index]
         self.current_transaction_products.append({'name': p['name'], 'price': p['price'], 'qty': product['qty']})
+        Dashboard.update_product(p['id'], product['qty'])
     
     def get_candidates(self, product: str, threshold=80) -> list[int]:
         candidates = []
@@ -80,6 +82,7 @@ class Database:
 
     def start_transaction(self):
         self.transaction_running = True
+        Dashboard.start_transaction()
 
     def stop_transaction(self):
         self.cursor.execute("INSERT INTO sale (date) VALUES (date('now'))")
@@ -92,3 +95,4 @@ class Database:
 
         self.current_transaction_products.clear()
         self.transaction_running = False
+        Dashboard.stop_transaction()
