@@ -20,7 +20,6 @@ class Llama:
             n_ctx=n_ctx,
             verbose=False
         )
-        self.transaction_running = False
         self.text_queue = text_queue
         self.db = Database()
         self.products = self.db.get_all_products_name()
@@ -34,15 +33,15 @@ class Llama:
         while True:
             text = self.text_queue.get()
             try:
-                if not self.transaction_running:
+                if not self.db.transaction_running:
                     if check_fuzzy_search(text, "start transaction"):
-                        self.transaction_running = True
+                        self.db.start_transaction()
 
-                if self.transaction_running:
+                if self.db.transaction_running:
                     self.extract_and_update(text)
 
                     if check_fuzzy_search(text, "stop transaction"):
-                        self.transaction_running = False
+                        self.db.stop_transaction()
             except Exception as e:
                 print(f"Error in monitor loop: {e}")
             finally:
