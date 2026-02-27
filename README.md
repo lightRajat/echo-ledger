@@ -54,10 +54,17 @@ cd echo-ledger
     ```
 
     > NOTE: `HF_TOKEN` just speeds up download of the model. It can be omitted.
-3. Install dependencies: `uv sync`
-4. Initialize the database and download AI models: `uv run init.py`
+3. Install cuda dependencies for `llama-cpp-python`:
+   ```bash
+   sudo apt update
+   sudo apt install build-essential cmake
+   sudo apt install nvidia-cuda-toolkit
+   export CMAKE_ARGS="-DGGML_CUDA=on"
+   ```
+4. Install project dependencies: `uv sync`
+5. Initialize the database and download AI models: `uv run init.py`
    > NOTE: This may take a while.
-5. Run the server: `uv run main.py`
+6. Run the server: `uv run main.py`
 
 ### Start Frontend UI
 
