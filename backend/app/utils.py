@@ -1,17 +1,19 @@
 from rapidfuzz import fuzz
 
-def log(msg: str):
-    print(f"[INFO]: {msg}")
+def log(msg: str, debug=False):
+    if debug:
+        print(f"[DEBUG]: {msg}")
+    else:
+        print(f"[INFO]: {msg}")
 
 def check_fuzzy_search(text: str, target: str, threshold: int = 80) -> bool:
     text = text.lower().strip()
-    target = target.lower().strip()
-
-    verb = target.split()[0]
+    target_words = target.lower().split()
     
-    score = fuzz.token_set_ratio(target, text)
-    
-    if verb not in text and fuzz.partial_ratio(verb, text) < 90:
-        return False
-
-    return score >= threshold
+    for word in target_words:
+        word_score = fuzz.partial_ratio(word, text)
+        
+        if word_score < threshold:
+            return False
+            
+    return True

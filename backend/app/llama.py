@@ -1,5 +1,6 @@
 from app.utils import log, check_fuzzy_search
 from huggingface_hub import hf_hub_download
+import json
 import llama_cpp
 import threading
 
@@ -20,17 +21,62 @@ class Llama:
         thread = threading.Thread(target=self.monitor_conversation, daemon=True)
         thread.start()
 
+        with open('data/prompt.md', 'r') as f:
+            self.system_message = f.read()
+
     def monitor_conversation(self):
         while True:
             text = self.text_queue.get()
-            if self.transaction_running:
-                is_ts_stopped = check_fuzzy_search(text, "stop transaction")
-                if is_ts_stopped:
-                    self.transaction_running = False
-                    print("🛑 Transaction stopped.")
-            else:
-                is_ts_started = check_fuzzy_search(text, "start transaction")
-                if is_ts_started:
-                    self.transaction_running = True
-                    print("✅ Transaction started.")
-            self.text_queue.task_done()
+            log(f"Text: {text}", debug=True)
+            try:
+                if not self.transaction_running:
+                    if check_fuzzy_search(text, "start transaction"):
+                        self.transaction_running = True
+                        log("✅ Transaction started.")
+
+                if self.transaction_running:
+                    self.extract_and_update(text)
+
+                    if check_fuzzy_search(text, "stop transaction"):
+                        self.transaction_running = False
+                        log("🛑 Transaction stopped.")
+            except Exception as e:
+                print(f"Error in monitor loop: {e}")
+            finally:
+                self.text_queue.task_done()
+    
+    def extract_and_update(self, text: str):
+        catalog = ["apple", "banana", "milk", "bread", "eggs", "cheese", "coffee", "tea", "sugar", "salt"]
+    
+        if not any(word in text for word in catalog):
+            return
+        
+        response = self.llm.create_chat_completion(
+            messages=[
+                {"role": "system", "content": self.system_message},
+                {"role": "user", "content": text},
+            ],
+            temperature=0,
+            response_format={
+                "type": "json_object",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "item": {"type": "string"},
+                            "qty": {"type": "integer"}
+                        },
+                        "required": ["item", "qty"]
+                    }
+                }
+            },
+        )
+
+        raw_json = response["choices"][0]["message"]["content"]
+        log(f"Response: {raw_json}", debug=True)
+        data = json.loads(raw_json)
+
+        if len(data) != 0:
+            for item in data:
+                log(f"{item['item']} - {item['qty']}")

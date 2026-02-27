@@ -18,7 +18,7 @@ app = FastAPI()
 
 silero = Silero()
 app.state.silero = silero
-whisper = Whisper(silero.audio_queue)
+whisper = Whisper(silero.audio_queue, device='gpu')
 llama = Llama(whisper.text_queue, os.getenv("LLAMA_REPO_ID"), os.getenv("LLAMA_FILE_NAME"))
 
 app.include_router(router)
