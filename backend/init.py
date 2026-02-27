@@ -1,3 +1,4 @@
+from app.utils import log
 import csv
 import os
 import sqlite3
@@ -5,9 +6,6 @@ from huggingface_hub import hf_hub_download
 from dotenv import load_dotenv
 from silero_vad import load_silero_vad
 from faster_whisper import download_model
-
-def log(message):
-    print(f"[INFO]: {message}")
 
 def init_db(db_name="data/data.db"):
     if os.path.exists(db_name):

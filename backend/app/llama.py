@@ -1,3 +1,4 @@
+from app.db import Database
 from app.utils import log, check_fuzzy_search
 from huggingface_hub import hf_hub_download
 import json
@@ -8,6 +9,10 @@ class Llama:
     def __init__(self, text_queue, repo_id: str, file_name: str, n_ctx: int = 512, n_gpu_layers: int = 10):
         log("Initializing Llama model...")
 
+        thread = threading.Thread(target=self.init, args=(text_queue, repo_id, file_name, n_ctx, n_gpu_layers), daemon=True)
+        thread.start()
+        
+    def init(self, text_queue, repo_id: str, file_name: str, n_ctx, n_gpu_layers):
         model_path = hf_hub_download(repo_id=repo_id, filename=file_name)
         self.llm = llama_cpp.Llama(
             model_path=model_path,
@@ -17,38 +22,34 @@ class Llama:
         )
         self.transaction_running = False
         self.text_queue = text_queue
-
-        thread = threading.Thread(target=self.monitor_conversation, daemon=True)
-        thread.start()
+        self.db = Database()
+        self.products = self.db.get_all_products_name()
 
         with open('data/prompt.md', 'r') as f:
             self.system_message = f.read()
+        
+        self.monitor_conversation()
 
     def monitor_conversation(self):
         while True:
             text = self.text_queue.get()
-            log(f"Text: {text}", debug=True)
             try:
                 if not self.transaction_running:
                     if check_fuzzy_search(text, "start transaction"):
                         self.transaction_running = True
-                        log("✅ Transaction started.")
 
                 if self.transaction_running:
                     self.extract_and_update(text)
 
                     if check_fuzzy_search(text, "stop transaction"):
                         self.transaction_running = False
-                        log("🛑 Transaction stopped.")
             except Exception as e:
                 print(f"Error in monitor loop: {e}")
             finally:
                 self.text_queue.task_done()
     
     def extract_and_update(self, text: str):
-        catalog = ["apple", "banana", "milk", "bread", "eggs", "cheese", "coffee", "tea", "sugar", "salt"]
-    
-        if not any(word in text for word in catalog):
+        if not any(word in text for word in self.products):
             return
         
         response = self.llm.create_chat_completion(
@@ -64,19 +65,19 @@ class Llama:
                     "items": {
                         "type": "object",
                         "properties": {
-                            "item": {"type": "string"},
-                            "qty": {"type": "integer"}
+                            "product": {"type": "string"},
+                            "qty": {"type": "integer"},
+                            "price_hint": {"type": ["integer", "null"]},
                         },
-                        "required": ["item", "qty"]
-                    }
-                }
+                        "required": ["product", "qty", "price_hint"],
+                    },
+                },
             },
         )
 
         raw_json = response["choices"][0]["message"]["content"]
-        log(f"Response: {raw_json}", debug=True)
         data = json.loads(raw_json)
 
         if len(data) != 0:
-            for item in data:
-                log(f"{item['item']} - {item['qty']}")
+            for product in data:
+                self.db.process_item(product)
