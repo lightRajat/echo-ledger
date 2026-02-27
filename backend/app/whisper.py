@@ -27,7 +27,9 @@ class Whisper:
                 audio_bytes = self.audio_queue.get()
                 audio_np = np.frombuffer(audio_bytes, dtype=np.float32)
                 segments, info = self.model.transcribe(audio_np, beam_size=self.beam_size, language=self.language)
-                self.text_queue.put(' '.join([segment.text for segment in segments]))
+                text = ' '.join([segment.text for segment in segments]).strip().lower()
+                if text:
+                    self.text_queue.put(text)
             except Exception as e:
                 print(f"Transcription Error: {e}")
             finally:

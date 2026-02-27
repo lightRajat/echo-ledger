@@ -32,6 +32,7 @@ class Llama:
     def monitor_conversation(self):
         while True:
             text = self.text_queue.get()
+            log(f"💬: {text}")
             try:
                 if not self.db.transaction_running:
                     if check_fuzzy_search(text, "start transaction"):
@@ -54,7 +55,7 @@ class Llama:
         response = self.llm.create_chat_completion(
             messages=[
                 {"role": "system", "content": self.system_message},
-                {"role": "user", "content": text},
+                {"role": "user", "content": f"Speech fragment: {text}"},
             ],
             temperature=0,
             response_format={
@@ -76,6 +77,7 @@ class Llama:
 
         raw_json = response["choices"][0]["message"]["content"]
         data = json.loads(raw_json)
+        log(f"🤖 LLM Response: {data}")
 
         if len(data) != 0:
             for product in data:

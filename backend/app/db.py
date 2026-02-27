@@ -1,3 +1,4 @@
+from app.utils import log
 from app.dashboard import Dashboard
 from rapidfuzz import fuzz
 import sqlite3
@@ -26,8 +27,12 @@ class Database:
         return products
     
     def process_item(self, product: dict):
+        log(f"🛒 Processing item: {product}")
+        product['product'] = product['product'].lower()
         candidates:list[int] = self.get_candidates(product["product"])
+        log(f"🧑🏻‍🤝‍🧑🏻 Candidates: {[self.products[i]['name'] for i in candidates]}")
         product_index: int = self.resolve_product(candidates, product['price_hint'], product['qty'])
+        log(f"🎯 Match with Product id {self.products[product_index]['id']} ({self.products[product_index]['name']})")
         self.commit_transaction(self.products[product_index]['id'], product['qty'])
 
         p = self.products[product_index]
@@ -83,6 +88,7 @@ class Database:
     def start_transaction(self):
         self.transaction_running = True
         Dashboard.start_transaction()
+        log("🟢 Transaction started")
 
     def stop_transaction(self):
         self.cursor.execute("INSERT INTO sale (date) VALUES (date('now'))")
@@ -96,3 +102,4 @@ class Database:
         self.current_transaction_products.clear()
         self.transaction_running = False
         Dashboard.stop_transaction()
+        log("🔴 Transaction stopped")
