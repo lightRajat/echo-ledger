@@ -62,9 +62,10 @@ cd echo-ledger
    export CMAKE_ARGS="-DGGML_CUDA=on"
    ```
 4. Install project dependencies: `uv sync`
-5. Initialize the database and download AI models: `uv run init.py`
+5. Download sample *csv* data from this [link](https://drive.google.com/drive/folders/123LdAlYHc1jk0STYFG95NMhZknSiGNVw?usp=drive_link) and paste them inside location `data/sample-data/`.
+6. Initialize the database and download AI models: `uv run init.py`
    > NOTE: This may take a while.
-6. Run the server: `uv run main.py`
+7. Run the server: `uv run main.py`
 
 ### Start Frontend UI
 

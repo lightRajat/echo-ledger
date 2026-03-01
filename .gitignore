@@ -5,4 +5,5 @@
 **/test*
 **/*venv/
 **/*__pycache__/
-backend/data/
+backend/data/data.db
+backend/data/sample-data/
