@@ -67,7 +67,8 @@ class Database:
         new_candidates = []
         if spoken_qty:
             for i in candidates:
-                if self.products[i]['qty'] >= spoken_qty:
+                curr_qty = self.get_product_qty(self.products[i]['id'])
+                if curr_qty >= spoken_qty:
                     new_candidates.append(i)
         if len(new_candidates) == 1:
             return new_candidates[0]
@@ -80,6 +81,10 @@ class Database:
                 max_score = self.products[i]['score']
                 best_candidate = i
         return best_candidate
+
+    def get_product_qty(self, p_id: int) -> int:
+        self.cursor.execute("SELECT qty FROM stock WHERE p_id = ?", (p_id,))
+        return self.cursor.fetchone()['qty']
     
     def commit_transaction(self, product_id: int, qty: int):
         self.cursor.execute("UPDATE stock SET qty = qty - ? WHERE p_id = ?", (qty, product_id))
